@@ -1,10 +1,14 @@
 import math
 import time
+from Graphics.Graphics import Graphics
 
 panelorder = [(2, 0), (2, 1), (2, 2),
               (1, 2), (1, 1), (1, 0),
               (0, 0), (0, 1), (0, 2),
               ]
+
+ledboard_width, ledboard_height = 96, 48
+destination = 'ledboard', 1337
 
 
 def posgen(width, height):
@@ -69,6 +73,8 @@ class NetworkConnector(object):
         else:
             self.sock.sendto(self.packet_start + self.compress(data),
                              self.target)
+
+netcon = NetworkConnector('ledboard', 1337)
 
 
 class LedPanel(object):
@@ -139,8 +145,15 @@ class LedBoard(object):
         should be set to value.
     """
     def set_pixel(self, x, y, value):
-        if value < 0 or value > self.colordepth:
+        if x < 0 or x >= self.width:
             return
+        if y < 0 or y >= self.height:
+            return
+        if value > self.colordepth:
+            value = self.colordepth
+        elif value < 0:
+            value = 0
+
         panel_pos = (x / self.panelwidth, y / self.panelheight)
         panel = self.panels[panel_pos]
         panel.set_pixel(x % self.panelwidth, y % self.panelheight, value)
@@ -163,7 +176,47 @@ class LedBoard(object):
         return fmtstr % fmt
 
 
-netcon = NetworkConnector('ledboard', 1337)
+class LedBoardGraphics(Graphics, LedBoard):
+    """
+        this object inherits from Graphics and LedBoard,
+        so that we can do graphical things on the ledboard.
+    """
+    def __init__(self, width, height, colordepth=0x7F, numpanels=9):
+        self.width = width
+        self.height = height
+        self.ledboard = LedBoard(width, height)
+        Graphics.__init__(self, width, height)
+        LedBoard.__init__(self, width, height, colordepth, numpanels)
+
+    """
+        override this function so that we draw to a ledboard surface instead.
+    """
+    def writePixel(self, x, y, color):
+        x, y = int(x), int(y)
+        if x >= self.width or y >= self.height:
+            return 0
+        elif x < 0 or y < 0:
+            return 0
+
+        self.set_pixel(x, y, color)
+
+
+class Clock(object):
+    def __init__(self, width, height):
+        self.ledGraphics = LedBoardGraphics(width, height)
+        ip, port = destination
+        self.netcon = NetworkConnector(ip, port)
+        self.color = 127
+        self.radius = height / 2 - 1
+        self.pos = (width / 2, height / 2)
+
+    def draw(self):
+        x, y = self.pos
+        self.ledGraphics.drawCircle(x, y, self.radius, self.color)
+
+    def run(self):
+        self.draw()
+        self.netcon.send_packet(self.ledGraphics.get_surface())
 
 
 def panel_test():
@@ -196,6 +249,7 @@ def ledboard_test():
 
 
 def main():
-    ledboard_test()
+    clock = Clock(ledboard_width, ledboard_height)
+    clock.run()
 
 main()
