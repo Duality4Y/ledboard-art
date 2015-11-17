@@ -1,5 +1,6 @@
 import math
 import time
+from datetime import datetime
 from Graphics.Graphics import Graphics
 
 panelorder = [(2, 0), (2, 1), (2, 2),
@@ -29,7 +30,7 @@ class NetworkConnector(object):
     """
         this object discribes a networkd connectionf,
     """
-    def __init__(self, ip, port, maxsend_size=512, send_timeout=0.1):
+    def __init__(self, ip, port, maxsend_size=512, send_timeout=0.02):
         import socket
         self.ip = ip
         self.port = port
@@ -119,8 +120,8 @@ class LedBoard(object):
         of the ledboard.
     """
     def __init__(self, width, height, colordepth=0x7f, numpanels=9):
-        self.width = width
-        self.height = height
+        self.width = int(width)
+        self.height = int(height)
         self.size = width * height
         self.numpanels = numpanels
         self.panelwidth = width / (numpanels / 3)
@@ -163,6 +164,7 @@ class LedBoard(object):
         that represents the ledboard surface.
     """
     def get_surface(self):
+        self.surface = []
         for pos in panelorder:
             panel = self.panels[pos]
             self.surface += panel.get_buffer()
@@ -197,22 +199,77 @@ class LedBoardGraphics(Graphics, LedBoard):
             return 0
         elif x < 0 or y < 0:
             return 0
+        else:
+            self.set_pixel(x, y, color)
 
-        self.set_pixel(x, y, color)
+    def scroll(self, dir=1):
+        if dir == 1:
+            surface = []
+            
+        elif dir == 2:
+            pass
+        elif dir == 3:
+            pass
+        elif dir == 4:
+            pass
 
 
 class Clock(object):
     def __init__(self, width, height):
+        self.width, self.height = width, height
         self.ledGraphics = LedBoardGraphics(width, height)
+
         ip, port = destination
         self.netcon = NetworkConnector(ip, port)
+
         self.color = 127
         self.radius = height / 2 - 1
-        self.pos = (width / 2, height / 2)
+        self.pos = (self.radius, height / 2)
+        self.secArmLen = self.radius - 2
+        self.minArmLen = self.secArmLen - 4
+        self.hourArmLen = self.minArmLen - 4
 
-    def draw(self):
+    def draw_hour_arm(self):
+        ctime = datetime.now().time()
+        minutes = math.radians((ctime.hour - 15) * 30)
+
+        cx, cy = minutes, minutes
+        x, y = math.cos(cx) * self.hourArmLen, math.sin(cy) * self.hourArmLen
+        xp, yp = self.pos
+        x, y = x + xp, y + yp
+        self.ledGraphics.drawLine(self.pos[0], self.pos[1], x, y, self.color)
+
+    def draw_min_arm(self):
+        ctime = datetime.now().time()
+        minutes = math.radians((ctime.minute - 15) * 6)
+
+        cx, cy = minutes, minutes
+        x, y = math.cos(cx) * self.minArmLen, math.sin(cy) * self.minArmLen
+        xp, yp = self.pos
+        x, y = x + xp, y + yp
+        self.ledGraphics.drawLine(self.pos[0], self.pos[1], x, y, self.color)
+
+    def draw_sec_arm(self):
+        ctime = datetime.now().time()
+        seconds = math.radians((ctime.second - 15) * 6)
+
+        cx, cy = seconds, seconds
+        x, y = math.cos(cx) * self.secArmLen, math.sin(cy) * self.secArmLen
+        xp, yp = self.pos
+        x, y = x + xp, y + yp
+        self.ledGraphics.drawLine(self.pos[0], self.pos[1], x, y, self.color)
+
+    def draw_border(self):
         x, y = self.pos
         self.ledGraphics.drawCircle(x, y, self.radius, self.color)
+
+    def draw(self):
+        self.ledGraphics.fill(0)
+        self.draw_border()
+        self.draw_sec_arm()
+        self.draw_min_arm()
+        self.draw_hour_arm()
+        self.ledGraphics.scroll()
 
     def run(self):
         self.draw()
@@ -250,6 +307,7 @@ def ledboard_test():
 
 def main():
     clock = Clock(ledboard_width, ledboard_height)
-    clock.run()
+    while(True):
+        clock.run()
 
 main()
