@@ -204,8 +204,8 @@ class LedBoardGraphics(Graphics, LedBoard):
 
     def scroll(self, dir=1):
         if dir == 1:
-            surface = []
-            
+            # surface = []
+            pass
         elif dir == 2:
             pass
         elif dir == 3:
@@ -227,49 +227,26 @@ class Clock(object):
         self.pos = (self.radius, height / 2)
         self.secArmLen = self.radius - 2
         self.minArmLen = self.secArmLen - 4
-        self.hourArmLen = self.minArmLen - 4
+        self.hourArmLen = self.minArmLen - 5
 
-    def draw_hour_arm(self):
-        ctime = datetime.now().time()
-        minutes = math.radians((ctime.hour - 15) * 30)
-
-        cx, cy = minutes, minutes
-        x, y = math.cos(cx) * self.hourArmLen, math.sin(cy) * self.hourArmLen
+    def draw_arm(self, len, time, divisor, color=0x7F):
+        time = math.radians((time - 15) * (360 / divisor))
+        cx, cy = time, time
+        x, y = math.cos(cx) * len, math.sin(cy) * len
         xp, yp = self.pos
         x, y = x + xp, y + yp
-        self.ledGraphics.drawLine(self.pos[0], self.pos[1], x, y, self.color)
+        xs, ys = self.pos
+        self.ledGraphics.drawLine(xs, ys, x, y, color)
 
-    def draw_min_arm(self):
-        ctime = datetime.now().time()
-        minutes = math.radians((ctime.minute - 15) * 6)
-
-        cx, cy = minutes, minutes
-        x, y = math.cos(cx) * self.minArmLen, math.sin(cy) * self.minArmLen
-        xp, yp = self.pos
-        x, y = x + xp, y + yp
-        self.ledGraphics.drawLine(self.pos[0], self.pos[1], x, y, self.color)
-
-    def draw_sec_arm(self):
-        ctime = datetime.now().time()
-        seconds = math.radians((ctime.second - 15) * 6)
-
-        cx, cy = seconds, seconds
-        x, y = math.cos(cx) * self.secArmLen, math.sin(cy) * self.secArmLen
-        xp, yp = self.pos
-        x, y = x + xp, y + yp
-        self.ledGraphics.drawLine(self.pos[0], self.pos[1], x, y, self.color)
-
-    def draw_border(self):
+    def draw_clock_face(self):
         x, y = self.pos
         self.ledGraphics.drawCircle(x, y, self.radius, self.color)
 
     def draw(self):
-        self.ledGraphics.fill(0)
-        self.draw_border()
-        self.draw_sec_arm()
-        self.draw_min_arm()
-        self.draw_hour_arm()
-        self.ledGraphics.scroll()
+        # self.ledGraphics.fill(0)
+        self.draw_arm(self.secArmLen, time.time() % 60, 60, time.time() % 0x7f)
+        self.draw_arm(self.minArmLen, time.time() % 3600. / 60., 60, 0x7f - (time.time() % 0x7f))
+        self.draw_arm(self.hourArmLen, time.time() % 86400. / 3600. % 12. + 1, 12, 0x7f - (time.time() % 0x7f))
 
     def run(self):
         self.draw()
