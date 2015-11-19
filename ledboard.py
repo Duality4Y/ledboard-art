@@ -1,6 +1,5 @@
 import math
 import time
-from datetime import datetime
 from Graphics.Graphics import Graphics
 
 panelorder = [(2, 0), (2, 1), (2, 2),
@@ -161,10 +160,9 @@ class LedBoard(object):
 
     """
         with this function you can set the 2 dimensional surface directly.
+        ledpanels are not updated.
     """
     def set_surface(self, surface):
-        if not isinstance(surface[0][0], list):
-            return
         self.surface = surface
 
     """
@@ -177,16 +175,58 @@ class LedBoard(object):
             panel = self.panels[pos]
             self.surface += panel.get_buffer()
         return self.surface
+
     """
         ledboard object info print.
     """
     def __repr__(self):
         fmtstr = "<LedBoard {Dim:%dx%d Size:%d ColorDepth: %d}>"
-        fmt = (self.width, self.height, self.size, self.colorDepth)
+        fmt = (self.width, self.height, self.size, self.colordepth)
         return fmtstr % fmt
 
 
-class LedBoardGraphics(Graphics, LedBoard):
+class Surface(object):
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.size = self.width * self.height
+
+    """
+        add two surfaces together, only works if they are both,
+        the same size!
+        values per pixel get added together.
+    """
+    def __add__(self, other):
+        s1 = self.get_surface()
+        s2 = other.get_surface()
+        for i in range(0, len(other)):
+            c1, c2 = s1[i], s2[i]
+            s1[i] = min((c1 + c2), self.colordepth)
+
+        newgraphics = LedBoardGraphics(self.width, self.height)
+        newgraphics.set_surface(s1)
+        return newgraphics
+
+    """
+        be able to print a representation of the surface.
+    """
+    def __str__(self):
+        return str(self.get_surface())
+
+    """
+        be able to iterate through the surface.
+    """
+    def __getitem__(self, key):
+        return self.get_surface()[key.start:key.stop:key.step]
+
+    """
+        return the size of the surface
+    """
+    def __len__(self):
+        return len(self.get_surface())
+
+
+class LedBoardGraphics(Graphics, LedBoard, Surface):
     """
         this object inherits from Graphics and LedBoard,
         so that we can do graphical things on the ledboard.
@@ -194,7 +234,7 @@ class LedBoardGraphics(Graphics, LedBoard):
     def __init__(self, width, height, colordepth=0x7F, numpanels=9):
         self.width = width
         self.height = height
-        self.ledboard = LedBoard(width, height)
+        Surface.__init__(self, width, height)
         Graphics.__init__(self, width, height)
         LedBoard.__init__(self, width, height, colordepth, numpanels)
 
@@ -210,6 +250,9 @@ class LedBoardGraphics(Graphics, LedBoard):
         else:
             self.set_pixel(x, y, color)
 
+    """
+        scroll a surface in a axis.
+    """
     def scroll(self, dir=1):
         surface = self.toMatrix(self.get_surface(), self.width)
         if dir == 1:
@@ -222,22 +265,28 @@ class LedBoardGraphics(Graphics, LedBoard):
         elif dir == 4:
             pass
 
+    """
+        ledgraphics object info print.
+    """
+    def __repr__(self):
+        fmtstr = "<LedBoard {Dim:%dx%d Size:%d ColorDepth: %d Surface: %s}>"
+        fmt = (self.width, self.height, self.size, self.colordepth,
+               self.__str__())
+        return fmtstr % fmt
 
-class SurfaceOps(object):
-    pass
 
-
-class AnalogClock(object):
-    def __init__(self, width, height):
+class AnalogClock(LedBoardGraphics):
+    def __init__(self, width, height, offset=(0, 0)):
         self.width, self.height = width, height
-        self.ledGraphics = LedBoardGraphics(width, height)
+        LedBoardGraphics.__init__(self, self.width, self.height)
+        # self.ledGraphics = LedBoardGraphics(width, height)
 
         ip, port = destination
-        self.netcon = NetworkConnector(ip, port)
 
         self.color = 127
+        self.x_off, self.y_off = offset
         self.radius = height / 2 - 2
-        self.pos = (self.radius + 1, height / 2)
+        self.pos = (self.radius + 1 + self.x_off, height / 2 + self.y_off)
         self.secArmLen = self.radius - 2
         self.minArmLen = self.secArmLen - 4
         self.hourArmLen = self.minArmLen - 5
@@ -249,7 +298,7 @@ class AnalogClock(object):
         cx, cy = ctime, ctime
         x, y = math.cos(cx) * l, math.sin(cy) * l
         xp, yp = self.pos
-        self.ledGraphics.drawCircle(x + xp, y + yp, 2, self.color)
+        self.drawCircle(x + xp, y + yp, 2, self.color)
 
     def draw_arm(self, len, time, divisor, color=0x7F):
         time = math.radians((time - 15) * (360 / divisor))
@@ -258,18 +307,18 @@ class AnalogClock(object):
         xp, yp = self.pos
         x, y = x + xp, y + yp
         xs, ys = self.pos
-        self.ledGraphics.drawLine(xs, ys, x, y, color)
+        self.drawLine(xs, ys, x, y, color)
 
     def draw_face(self):
         for i in range(0, 360, 360 / 12):
             ir = math.radians(i)
             x, y = math.cos(ir) * self.radius, math.sin(ir) * self.radius
             xp, yp = self.pos
-            self.ledGraphics.drawCircle(x + xp, y + yp, 1, self.color)
+            self.drawCircle(x + xp, y + yp, 1, self.color)
             # self.ledGraphics.drawPixel(x + xp, y + yp, self.color)
 
     def draw(self):
-        self.ledGraphics.fill(0)
+        self.fill(0)
         self.draw_face()
         self.draw_arm(self.secArmLen, int(time.time() % 60), 60)
         self.draw_arm(self.minArmLen, time.time() % 3600. / 60., 60)
@@ -277,9 +326,8 @@ class AnalogClock(object):
 
     def generate(self):
         self.draw()
-        for i in range(0, 10):
-            self.ledGraphics.scroll(1)
-        return self.ledGraphics.get_surface()
+        # for i in range(0, 10):
+        #     self.ledGraphics.scroll(1)
 
 
 def panel_test():
@@ -313,8 +361,16 @@ def ledboard_test():
 
 def main():
     clock = AnalogClock(ledboard_width, ledboard_height)
+    clock2 = AnalogClock(ledboard_width, ledboard_height,
+                         (ledboard_width / 2, 0))
+    newclock = clock
     while(True):
-        img = clock.generate()
-        netcon.send_packet(img)
+        # update the clocks
+        clock.generate()
+        clock2.generate()
+        # create a single surface with both on it.
+        newclock = (clock + clock2)
+        # send the newly generated surface.
+        netcon.send_packet(newclock)
 
 main()
