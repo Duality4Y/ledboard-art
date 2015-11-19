@@ -160,6 +160,14 @@ class LedBoard(object):
         panel.set_pixel(x % self.panelwidth, y % self.panelheight, value)
 
     """
+        with this function you can set the 2 dimensional surface directly.
+    """
+    def set_surface(self, surface):
+        if not isinstance(surface[0][0], list):
+            return
+        self.surface = surface
+
+    """
         this function returns a single dimensional array,
         that represents the ledboard surface.
     """
@@ -203,9 +211,10 @@ class LedBoardGraphics(Graphics, LedBoard):
             self.set_pixel(x, y, color)
 
     def scroll(self, dir=1):
+        surface = self.toMatrix(self.get_surface(), self.width)
         if dir == 1:
-            # surface = []
-            pass
+            surface.insert(0, surface.pop())
+            LedBoard.set_surface(self, surface)
         elif dir == 2:
             pass
         elif dir == 3:
@@ -214,7 +223,11 @@ class LedBoardGraphics(Graphics, LedBoard):
             pass
 
 
-class Clock(object):
+class SurfaceOps(object):
+    pass
+
+
+class AnalogClock(object):
     def __init__(self, width, height):
         self.width, self.height = width, height
         self.ledGraphics = LedBoardGraphics(width, height)
@@ -223,11 +236,20 @@ class Clock(object):
         self.netcon = NetworkConnector(ip, port)
 
         self.color = 127
-        self.radius = height / 2 - 1
-        self.pos = (self.radius, height / 2)
+        self.radius = height / 2 - 2
+        self.pos = (self.radius + 1, height / 2)
         self.secArmLen = self.radius - 2
         self.minArmLen = self.secArmLen - 4
         self.hourArmLen = self.minArmLen - 5
+
+    def draw_sec_arm(self):
+        ctime = math.radians(int((time.time() % 60 - 15) * 360 / 60))
+
+        l = self.radius - 2
+        cx, cy = ctime, ctime
+        x, y = math.cos(cx) * l, math.sin(cy) * l
+        xp, yp = self.pos
+        self.ledGraphics.drawCircle(x + xp, y + yp, 2, self.color)
 
     def draw_arm(self, len, time, divisor, color=0x7F):
         time = math.radians((time - 15) * (360 / divisor))
@@ -238,19 +260,26 @@ class Clock(object):
         xs, ys = self.pos
         self.ledGraphics.drawLine(xs, ys, x, y, color)
 
-    def draw_clock_face(self):
-        x, y = self.pos
-        self.ledGraphics.drawCircle(x, y, self.radius, self.color)
+    def draw_face(self):
+        for i in range(0, 360, 360 / 12):
+            ir = math.radians(i)
+            x, y = math.cos(ir) * self.radius, math.sin(ir) * self.radius
+            xp, yp = self.pos
+            self.ledGraphics.drawCircle(x + xp, y + yp, 1, self.color)
+            # self.ledGraphics.drawPixel(x + xp, y + yp, self.color)
 
     def draw(self):
-        # self.ledGraphics.fill(0)
-        self.draw_arm(self.secArmLen, time.time() % 60, 60, time.time() % 0x7f)
-        self.draw_arm(self.minArmLen, time.time() % 3600. / 60., 60, 0x7f - (time.time() % 0x7f))
-        self.draw_arm(self.hourArmLen, time.time() % 86400. / 3600. % 12. + 1, 12, 0x7f - (time.time() % 0x7f))
+        self.ledGraphics.fill(0)
+        self.draw_face()
+        self.draw_arm(self.secArmLen, int(time.time() % 60), 60)
+        self.draw_arm(self.minArmLen, time.time() % 3600. / 60., 60)
+        self.draw_arm(self.hourArmLen, time.time() % 86400. / 3600. % 12. + 1, 12)
 
-    def run(self):
+    def generate(self):
         self.draw()
-        self.netcon.send_packet(self.ledGraphics.get_surface())
+        for i in range(0, 10):
+            self.ledGraphics.scroll(1)
+        return self.ledGraphics.get_surface()
 
 
 def panel_test():
@@ -283,8 +312,9 @@ def ledboard_test():
 
 
 def main():
-    clock = Clock(ledboard_width, ledboard_height)
+    clock = AnalogClock(ledboard_width, ledboard_height)
     while(True):
-        clock.run()
+        img = clock.generate()
+        netcon.send_packet(img)
 
 main()
