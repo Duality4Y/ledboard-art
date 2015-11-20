@@ -192,21 +192,51 @@ class Surface(object):
             self.width = surface.width
             self.height = surface.height
             self.size = surface.size
+            self.color_rep = surface.color_rep
+            self.color_depth = surface.color_depth
             self.surface = surface.surface
         else:
-            self.width = kwargs.get('width', 0)
-            self.height = kwargs.get('height', 0)
+            self.width = kwargs.get('width', 1)
+            self.height = kwargs.get('height', 1)
             self.size = self.width * self.height
+            self.color_rep = (0, 0, 0)
+            self.color_depth = 0xFF
             self.surface = self.generate_indexes()
 
-    def generate_indexes(self, default_val=(0, 0, 0)):
+    """
+        this function sets the thing the surface 'pixels'
+        represent, by default that is a (r, g, b) tuple (red green blue)
+        of values.
+        but could be any compination of colors or color on it's own.
+    """
+    def set_color_rep(self, rep):
+        self.color_rep = rep
+        self.surface = self.generate_indexes()
+
+    """
+        set the color depth of the 'pixels' on a surface.
+        by default this value is 0 - 0xff, and nothing higher then 0xff
+        can be represented, and nothing lower then 0 can't be either.
+    """
+    def set_color_depth(self, depth):
+        self.color_depth = depth
+
+    """
+        generates a raw dictionary with empty positional values.
+        of which the value representation is self.color_rep
+    """
+    def generate_indexes(self):
         surface = {}
         for y in range(0, self.height):
             for x in range(0, self.width):
                 index = (x, y)
-                surface[index] = default_val
+                surface[index] = self.color_rep
         return surface
 
+    """
+        returns a list of positions that is sorted.
+        and a list with values for those positional keys.
+    """
     def get_sorted_surface(self):
         tempsurface = []
         indexes = sorted(self.surface.keys())
@@ -416,6 +446,24 @@ def test_surface():
     print("byte representation: ")
     print(surface)
     print("len of byte representation: ", len(str(surface)))
+
+    print("make new surface: Surface(width=3, height=3)")
+    surface = Surface(width=3, height=3)
+    print("set color rep = (0)")
+    surface.set_color_rep((0,))
+    print("iterate and print surface: ")
+    for pos, value in surface:
+        print("pos: %s, value: %s" % (str(pos), str(value)))
+
+    print("surface data test with values of 'helloword': ")
+    hello = 'helloword'
+    for i, (pos, value) in enumerate(surface):
+        # if surface rep was (0, 0, 0)
+        # then you would do (hello[i], ) * 3 for example
+        surface[pos] = (ord(hello[i]), )
+    print(surface)
+    print("this is how you can directly "
+          "manipulate data on a surface.")
 
 
 def panel_test():
