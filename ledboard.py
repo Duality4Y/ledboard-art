@@ -231,14 +231,16 @@ class Surface(object):
         return str(self.surface)
 
     """
-        iterate through the surface.
+        iter through the surface.
     """
     def __getitem__(self, key):
-        lsurface = []
+        tempsurface = []
         indexes = sorted(self.surface.keys())
         for index in indexes:
-            print(index)
-        return None
+            tempsurface.append(self.surface[index])
+        index = indexes[key]
+        value = tempsurface[key]
+        return (index, value)
 
     """
         return the size of the surface
@@ -349,6 +351,28 @@ class AnalogClock(LedBoardGraphics):
         self.draw()
         # for i in range(0, 10):
         #     self.ledGraphics.scroll(1)
+
+
+def test_surface():
+    import ledboard
+    reload(ledboard)
+    Surface = ledboard.Surface
+    surface = Surface(width=3, height=3)
+    alist = [surface]
+    print("surface in alist: ")
+    print(surface in alist)
+    print("Surface in alist: ")
+    print(Surface in alist)
+    print("type(Surface) == type(surface)")
+    print(type(Surface), type(surface))
+    print(type(Surface) == type(surface))
+    print("pass surface to a Surface: ")
+    surface = Surface(surface)
+    print("len(surface): ")
+    print(len(surface))
+    print("itterate over surface: ")
+    for pos, value in surface:
+        print("pos: ", pos, "value: ", value)
 
 
 def panel_test():
