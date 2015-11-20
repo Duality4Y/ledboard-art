@@ -186,10 +186,35 @@ class LedBoard(object):
 
 
 class Surface(object):
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.size = self.width * self.height
+    id = 'Surface'
+
+    def __init__(self, surface=None, **kwargs):
+
+        if surface:
+            self.width = surface.width
+            self.height = surface.height
+            self.size = surface.size
+            self.surface = surface.surface
+        else:
+            self.width = kwargs.get('width', 0)
+            self.height = kwargs.get('height', 0)
+            self.size = self.width * self.height
+            self.surface = self.generate_indexes()
+
+    def generate_indexes(self, default_val=(0, 0, 0)):
+        surface = {}
+        for y in range(0, self.height):
+            for x in range(0, self.width):
+                index = (x, y)
+                surface[index] = default_val
+        return surface
+
+    """
+        we can look for other surface's,
+        for example if you had a list objects.
+    """
+    def __eq__(self, other):
+        return other.id == self.id
 
     """
         add two surfaces together, only works if they are both,
@@ -197,33 +222,29 @@ class Surface(object):
         values per pixel get added together.
     """
     def __add__(self, other):
-        s1 = self.get_surface()
-        s2 = other.get_surface()
-        for i in range(0, len(other)):
-            c1, c2 = s1[i], s2[i]
-            s1[i] = min((c1 + c2), self.colordepth)
-
-        newgraphics = LedBoardGraphics(self.width, self.height)
-        newgraphics.set_surface(s1)
-        return newgraphics
+        pass
 
     """
-        be able to print a representation of the surface.
+        print a representation of the surface.
     """
     def __str__(self):
-        return str(self.get_surface())
+        return str(self.surface)
 
     """
-        be able to iterate through the surface.
+        iterate through the surface.
     """
     def __getitem__(self, key):
-        return self.get_surface()[key.start:key.stop:key.step]
+        lsurface = []
+        indexes = sorted(self.surface.keys())
+        for index in indexes:
+            print(index)
+        return None
 
     """
         return the size of the surface
     """
     def __len__(self):
-        return len(self.get_surface())
+        return len(self.surface)
 
 
 class LedBoardGraphics(Graphics, LedBoard, Surface):
@@ -359,6 +380,12 @@ def ledboard_test():
     netcon.send_packet(ledboard.get_surface())
 
 
+def analog_clock_test():
+    clock = AnalogClock(ledboard_width, ledboard_height)
+    while(True):
+        netcon.send_packet(clock)
+
+
 def main():
     clock = AnalogClock(ledboard_width, ledboard_height)
     clock2 = AnalogClock(ledboard_width, ledboard_height,
@@ -373,4 +400,5 @@ def main():
         # send the newly generated surface.
         netcon.send_packet(newclock)
 
-main()
+if __name__ == "__main__":
+    main()
