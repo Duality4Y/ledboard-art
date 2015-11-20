@@ -414,7 +414,7 @@ def test_surface():
     surface[(0, 0)] = value
     print("set value at coordinate surface[(0, 0)] = ('*',)*3", surface[(0, 0)])
     print("byte representation: ")
-    print(str(surface))
+    print(surface)
     print("len of byte representation: ", len(str(surface)))
 
 
