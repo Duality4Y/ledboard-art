@@ -186,11 +186,9 @@ class LedBoard(object):
 
 
 class Surface(object):
-    id = 'Surface'
-
     def __init__(self, surface=None, **kwargs):
-
-        if surface:
+        self.__name__ = 'Surface'
+        if isinstance(surface, Surface):
             self.width = surface.width
             self.height = surface.height
             self.size = surface.size
@@ -209,12 +207,12 @@ class Surface(object):
                 surface[index] = default_val
         return surface
 
-    """
-        we can look for other surface's,
-        for example if you had a list objects.
-    """
-    def __eq__(self, other):
-        return other.id == self.id
+    def get_sorted_surface(self):
+        tempsurface = []
+        indexes = sorted(self.surface.keys())
+        for index in indexes:
+            tempsurface.append(self.surface[index])
+        return indexes, tempsurface
 
     """
         add two surfaces together, only works if they are both,
@@ -225,22 +223,49 @@ class Surface(object):
         pass
 
     """
-        print a representation of the surface.
-    """
-    def __str__(self):
-        return str(self.surface)
-
-    """
         iter through the surface.
     """
     def __getitem__(self, key):
-        tempsurface = []
-        indexes = sorted(self.surface.keys())
-        for index in indexes:
-            tempsurface.append(self.surface[index])
-        index = indexes[key]
-        value = tempsurface[key]
-        return (index, value)
+        # print("key", key)
+        # print("type(key)", type(key))
+        # print("type(key) == int: ", type(key) == int)
+        if(type(key) == int):
+            if key < 0 or key > self.size:
+                raise ValueError
+            indexes, templist = self.get_sorted_surface()
+            index = indexes[key]
+            value = templist[key]
+            return (index, value)
+        if(type(key) == tuple):
+            if(key not in self.surface):
+                raise ValueError
+            return self.surface[key]
+        else:
+            raise TypeError
+
+    """
+        set value by position.
+    """
+    def __setitem__(self, key, value):
+        if(type(key) == tuple and type(value) == tuple):
+            if key not in self.surface:
+                raise ValueError
+            self.surface[key] = value
+        else:
+            print(type(key), type(value))
+            raise TypeError
+
+    """
+        return a byte representation of of the surface.
+        things like sockets need this.
+    """
+    def __str__(self):
+        data = ''
+        indexes, templist = self.get_sorted_surface()
+        for color in templist:
+            for component in color:
+                data += chr(component)
+        return data
 
     """
         return the size of the surface
@@ -358,21 +383,39 @@ def test_surface():
     reload(ledboard)
     Surface = ledboard.Surface
     surface = Surface(width=3, height=3)
+    print("create surface: Surface(width=3, height=3)")
     alist = [surface]
-    print("surface in alist: ")
-    print(surface in alist)
-    print("Surface in alist: ")
-    print(Surface in alist)
-    print("type(Surface) == type(surface)")
-    print(type(Surface), type(surface))
-    print(type(Surface) == type(surface))
-    print("pass surface to a Surface: ")
+    print("surface in [surface]: ", surface in alist)
+    print("Surface in [surface]: ", Surface in alist)
+    print("type(Surface), type(surface): ", type(Surface), type(surface))
+    print("type(Surface) == type(surface): ", type(Surface) == type(surface))
+    print("type(Surface) == surface: ", type(Surface) == surface)
+    print("type(surface) == Surface: ", type(surface) == Surface)
+    print("Surface == surface: ", Surface == surface)
+    print("surface == surface: ", surface == surface)
+    print("Surface is surface: ", Surface is surface)
+    print("surface is surface: ", surface is surface)
+    print("isinstance(Surface, surface): ", isinstance(surface, Surface))
+    print("pass surface to a Surface: surface = Surface(surface)")
     surface = Surface(surface)
-    print("len(surface): ")
-    print(len(surface))
-    print("itterate over surface: ")
+    print("len(surface): ", len(surface))
+    print("itterate over surface with unzip values: ")
     for pos, value in surface:
         print("pos: ", pos, "value: ", value)
+    print("itterate over surface with single value: ")
+    for value in surface:
+        print("value: ", value)
+    print("value at surface[5]: ", surface[5])
+    print("get value at coordinate surface[(0, 1)]: ", surface[(0, 1)])
+    value = (ord('c'),) * 3
+    surface[(2, 2)] = value
+    print("set value at coordinate surface[(2, 2)] = ('c',)*3", surface[(2, 2)])
+    value = (ord('*'),) * 3
+    surface[(0, 0)] = value
+    print("set value at coordinate surface[(0, 0)] = ('*',)*3", surface[(0, 0)])
+    print("byte representation: ")
+    print(str(surface))
+    print("len of byte representation: ", len(str(surface)))
 
 
 def panel_test():
@@ -411,18 +454,7 @@ def analog_clock_test():
 
 
 def main():
-    clock = AnalogClock(ledboard_width, ledboard_height)
-    clock2 = AnalogClock(ledboard_width, ledboard_height,
-                         (ledboard_width / 2, 0))
-    newclock = clock
-    while(True):
-        # update the clocks
-        clock.generate()
-        clock2.generate()
-        # create a single surface with both on it.
-        newclock = (clock + clock2)
-        # send the newly generated surface.
-        netcon.send_packet(newclock)
+    test_surface()
 
 if __name__ == "__main__":
     main()
