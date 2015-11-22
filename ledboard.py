@@ -256,25 +256,29 @@ class Surface(object):
             newval.append(t1[i] + t2[i])
         return tuple(newval)
 
+    def check_surface(self, s1, s2):
+        if self.color_rep != s2.color_rep:
+            raise(Exception("surface representations do not match."))
+        if len(self) != len(s2):
+            raise(Exception("surface size's do not match."))
+
     """
         add two surfaces together, only works if they are both
         the same size, and have the same color representation!
         values per pixel get added together.
     """
     def __add__(self, other):
+        self.check_surface(self, other)
         surface = Surface(self)
         for pos, v1 in other:
             v2 = self[pos]
-            surface[pos] = self.add_values(v1, v2)
+            surface[pos] = tuple(map(lambda a, b: a + b, v1, v2))
         return surface
 
     """
         iter through the surface.
     """
     def __getitem__(self, key):
-        # print("key", key)
-        # print("type(key)", type(key))
-        # print("type(key) == int: ", type(key) == int)
         if(type(key) == int):
             if key < 0 or key > self.size:
                 raise ValueError
@@ -430,9 +434,6 @@ class AnalogClock(LedBoardGraphics):
 
 
 def test_surface():
-    import ledboard
-    reload(ledboard)
-    Surface = ledboard.Surface
     surface = Surface(width=3, height=3)
     print("create surface: Surface(width=3, height=3)")
     alist = [surface]
@@ -488,9 +489,12 @@ def test_surface():
     print("add two surface's s1 + s2.")
     print("incsurface: ")
     incsurface = Surface(width=3, height=3)
+    incsurface.set_color_rep((0,))
+    print("fill with (0x01, ).")
     for i, point in enumerate(incsurface):
         pos, value = point
         incsurface[pos] = (0x01, )
+    print("incsurface: ")
     print(incsurface)
     print("combined surface: ")
     newsurface = (surface + incsurface)
