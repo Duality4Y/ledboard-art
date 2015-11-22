@@ -194,7 +194,8 @@ class Surface(object):
             self.size = surface.size
             self.color_rep = surface.color_rep
             self.color_depth = surface.color_depth
-            self.surface = surface.surface
+            # always create a copy, or else we get the reference.
+            self.surface = dict(surface.surface)
         else:
             self.width = kwargs.get('width', 1)
             self.height = kwargs.get('height', 1)
@@ -245,12 +246,27 @@ class Surface(object):
         return indexes, tempsurface
 
     """
-        add two surfaces together, only works if they are both,
-        the same size!
+        add two tuples, because point values are tuples.
+    """
+    def add_values(self, t1, t2):
+        newval = []
+        # create a copy of the values.
+        t1, t2 = tuple(t1), tuple(t2)
+        for i in range(0, len(t1)):
+            newval.append(t1[i] + t2[i])
+        return tuple(newval)
+
+    """
+        add two surfaces together, only works if they are both
+        the same size, and have the same color representation!
         values per pixel get added together.
     """
     def __add__(self, other):
-        pass
+        surface = Surface(self)
+        for pos, v1 in other:
+            v2 = self[pos]
+            surface[pos] = self.add_values(v1, v2)
+        return surface
 
     """
         iter through the surface.
@@ -269,7 +285,12 @@ class Surface(object):
         if(type(key) == tuple):
             if(key not in self.surface):
                 raise ValueError
-            return self.surface[key]
+            elif(len(key) == 3):
+                print("point not implemented yet.")
+            elif(len(key) == 2):
+                return self.surface[key]
+            else:
+                raise ValueError
         else:
             raise TypeError
 
@@ -294,7 +315,7 @@ class Surface(object):
         indexes, templist = self.get_sorted_surface()
         for color in templist:
             for component in color:
-                data += chr(component)
+                data += str(int(component)) + ' '
         return data
 
     """
@@ -464,6 +485,18 @@ def test_surface():
     print(surface)
     print("this is how you can directly "
           "manipulate data on a surface.")
+    print("add two surface's s1 + s2.")
+    print("incsurface: ")
+    incsurface = Surface(width=3, height=3)
+    for i, point in enumerate(incsurface):
+        pos, value = point
+        incsurface[pos] = (0x01, )
+    print(incsurface)
+    print("combined surface: ")
+    newsurface = (surface + incsurface)
+    print(surface)
+    print(incsurface)
+    print(newsurface)
 
 
 def panel_test():
