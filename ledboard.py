@@ -81,7 +81,7 @@ class NetworkConnector(object):
                     self.sock.sendto('\x00' + self.compress(chunk), self.target)
                 else:
                     self.sock.sendto('\x80', self.target)
-                    time.sleep(0.02)
+                    time.sleep(self.send_timeout)
                     self.sock.sendto('\x00' + self.compress(chunk), self.target)
                 time.sleep(self.send_timeout)
         else:
@@ -101,38 +101,48 @@ class Graphics(Surface):
         self.surface = self.gen_surface(color)
 
     def drawPixel(self, x, y, color):
+        if x < 0 or y < 0:
+            return
+        if x >= self.width or y >= self.height:
+            return
         pos = (x, y)
         if not isinstance(color, tuple):
             color = (color, )
         self.surface[pos] = color
 
     # http://rosettacode.org/wiki/Bitmap/Bresenham's_line_algorithm#Python
-    def drawLine(self, x0, y0, x1, y1, color):
-        "Bresenham's line algorithm"
-        dx = abs(x1 - x0)
-        dy = abs(y1 - y0)
-        x, y = x0, y0
-        sx = -1 if x0 > x1 else 1
-        sy = -1 if y0 > y1 else 1
-        if dx > dy:
-            err = dx / 2.0
-            while x != x1:
-                self.drawPixel(x, y, color)
-                err -= dy
-                if err < 0:
-                    y += sy
-                    err += dx
-                x += sx
+    def drawLine(self, x1, y1, x2, y2, color):
+        x1, y1 = int(x1), int(y1)
+        x2, y2 = int(x2), int(y2)
+        issteep = abs(y2 - y1) > abs(x2 - x1)
+        if issteep:
+            x1, y1 = y1, x1
+            x2, y2 = y2, x2
+        rev = False
+        if x1 > x2:
+            x1, x2 = x2, x1
+            y1, y2 = y2, y1
+            rev = True
+        deltax = x2 - x1
+        deltay = abs(y2 - y1)
+        error = int(deltax / 2)
+        y = y1
+        ystep = None
+        if y1 < y2:
+            ystep = 1
         else:
-            err = dy / 2.0
-            while y != y1:
+            ystep = -1
+        for x in range(x1, x2 + 1):
+            if issteep:
+                self.drawPixel(y, x, color)
+            else:
                 self.drawPixel(x, y, color)
-                err -= dx
-                if err < 0:
-                    x += sx
-                    err += dy
-                y += sy
-        self.drawPixel(x, y, color)
+            error -= deltay
+            if error < 0:
+                y += ystep
+                error += deltax
+        # if rev:
+        #     self.surface.reverse()
 
     def drawRect(self, x, y, width, height, color):
         x, y = int(x), int(y)
@@ -230,7 +240,7 @@ class AnalogClock(Graphics):
     def draw(self):
         self.fill(0)
         self.draw_face()
-        self.draw_arm(self.secArmLen, int(time.time() % 60), 60)
+        self.draw_arm(self.secArmLen, time.time() % 60, 60)
         self.draw_arm(self.minArmLen, time.time() % 3600. / 60., 60)
         self.draw_arm(self.hourArmLen, time.time() % 86400. / 3600. % 12. + 1, 12)
 
@@ -263,9 +273,8 @@ def line_test():
 
 
 def analog_clock_test():
-    pos = (ledboard_width / 4, 0)
-    clock = AnalogClock(ledboard_width, ledboard_height, pos)
-    clock.generate()
+    # pos = (ledboard_width / 4, 0)
+    clock = AnalogClock(ledboard_width, ledboard_height)
     while(True):
         clock.generate()
         netcon.send_packet(clock)
@@ -316,15 +325,15 @@ def tama_test():
 
 
 def main():
-    # surface = Surface(width=48, height=96)
+    surface = Surface(width=48, height=96)
     # surface.set_color_rep((0, ))
     # surface.set_color_depth(0x7f)
     # surface[(1, 1)] = (0x7f,)
     # netcon.send_packet(surface)
-    # analog_clock_test()
+    analog_clock_test()
     # ledboard_test()
     # line_test()
-    tama_test()
+    # tama_test()
 
 if __name__ == "__main__":
     main()
