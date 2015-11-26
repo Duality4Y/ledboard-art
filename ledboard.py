@@ -2,6 +2,8 @@ import math
 import time
 import socket
 from Surface import Surface
+import urllib
+import json
 
 panel_width, panel_height = 32, 16
 ledboard_width, ledboard_height = 96, 48
@@ -269,6 +271,50 @@ def analog_clock_test():
         netcon.send_packet(clock)
 
 
+def generate_image():
+    url = 'http://tamahive.spritesserver.nl/gettama.php'
+    response = urllib.urlopen(url)
+    data = json.loads(response.read())
+    tama = data['tama']
+    first_hive = tama[0]
+    pixeldata = first_hive['pixels']
+
+    ledboard = Surface(width=96, height=48)
+
+    p = 0
+    for y in range(0, 32):
+        for x in range(0, 48):
+            value = ord(pixeldata[p])
+            if value == ord('A'):
+                value = 0x7f
+            else:
+                value = 0x00
+            ledboard[(x, y + 8)] = (value, )
+            p += 1
+
+    second_hive = tama[1]
+    pixeldata = second_hive['pixels']
+
+    p = 0
+    for y in range(0, 32):
+        for x in range(0, 48):
+            value = ord(pixeldata[p])
+            if value == ord('A'):
+                value = 0x7f
+            else:
+                value = 0x00
+            ledboard[(x + 48, y + 8)] = (value, )
+            p += 1
+
+    return ledboard
+
+
+def tama_test():
+    while(True):
+        netcon.send_packet(generate_image())
+        time.sleep(0.02)
+
+
 def main():
     # surface = Surface(width=48, height=96)
     # surface.set_color_rep((0, ))
@@ -277,7 +323,8 @@ def main():
     # netcon.send_packet(surface)
     # analog_clock_test()
     # ledboard_test()
-    line_test()
+    # line_test()
+    tama_test()
 
 if __name__ == "__main__":
     main()

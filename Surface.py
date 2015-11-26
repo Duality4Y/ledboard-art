@@ -11,6 +11,10 @@ class Surface(object):
             self.indexes = self.gen_indexes()
             self.surface = self.gen_surface()
 
+    """
+        generate a dictionary as surface that has,
+        positional keys, and pixel data as value.
+    """
     def gen_surface(self, default=None):
         if default:
             value = default
@@ -22,6 +26,10 @@ class Surface(object):
             surface[index] = value
         return surface
 
+    """
+        generate a list of x, y pairs that correspond to
+        positional values.
+    """
     def gen_indexes(self):
         indexes = []
         for y in range(0, self.height):
